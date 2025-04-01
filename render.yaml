@@ -3,12 +3,12 @@ services:
     name: telegram-bot-api
     env: docker
     region: virginia
-    plan: pro
+    plan: standard
     healthCheckPath: /
     disk:
       name: telegram-bot-api-data
       mountPath: /app/data
-      sizeGB: 10
+      sizeGB: 1
     envVars:
       - key: API_ID
         sync: false
