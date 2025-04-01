@@ -1,23 +1,15 @@
-#!/usr/bin/env python3
+import http.server
+import socketserver
 
-from http.server import BaseHTTPRequestHandler, HTTPServer
+PORT = 10000
 
-class HealthCheckHandler(BaseHTTPRequestHandler):
+class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
-        self.send_header('Content-type', 'application/json')
+        self.send_header("Content-type", "application/json")
         self.end_headers()
-        self.wfile.write(b'{"status":"ok","message":"Telegram Bot API Server Health Check"}')
+        self.wfile.write(b'{"status":"ok","message":"Telegram Bot API Health Check"}')
 
-    def log_message(self, format, *args):
-        # Suppress logging to avoid cluttering logs
-        return
-
-def run_server():
-    server_address = ('', 10000)
-    httpd = HTTPServer(server_address, HealthCheckHandler)
-    print('Starting health check server on port 10000...')
+with socketserver.TCPServer(("", PORT), Handler) as httpd:
+    print("Health check server running at port", PORT)
     httpd.serve_forever()
-
-if __name__ == '__main__':
-    run_server()
