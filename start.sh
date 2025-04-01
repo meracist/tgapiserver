@@ -1,56 +1,35 @@
-#!/bin/bash
+FROM ubuntu:20.04 AS builder
 
-# Create directories if they don't exist
-mkdir -p /app/data
-mkdir -p /app/data/temp
+# Set environment variables to avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
 
-# Start health check server in background
-echo "Starting health check server on port 10000..."
-python3 /app/health_server.py &
-HEALTH_PID=$!
+# Install dependencies
+RUN apt-get update &&    apt-get upgrade -y &&    apt-get install -y    build-essential    make    git    zlib1g-dev    libssl-dev    gperf    cmake    g++    && apt-get clean    && rm -rf /var/lib/apt/lists/*
 
-echo "Starting Telegram Bot API server..."
-echo "API_ID: ${API_ID}"
-echo "API_HASH: ${API_HASH} (hidden for security)"
-echo "Data directory: /app/data"
+# Clone and build the telegram-bot-api
+WORKDIR /app
+RUN git clone --recursive https://github.com/tdlib/telegram-bot-api.git &&    cd telegram-bot-api &&    rm -rf build &&    mkdir build &&    cd build &&    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=.. .. &&    cmake --build . --target install
 
-# Start the Telegram Bot API server with persistent storage
-/usr/local/bin/telegram-bot-api  --api-id=${API_ID}  --api-hash=${API_HASH}  --local  --dir=/app/data  --temp-dir=/app/data/temp  --log=/app/data/bot-api.log  --verbosity=2  --max-webhook-connections=100  --http-port=8081 &
+# Second stage to create a smaller image
+FROM ubuntu:20.04
 
-BOT_API_PID=$!
-echo "Telegram Bot API server started with PID: $BOT_API_PID"
-echo "Health check server running with PID: $HEALTH_PID"
+# Install runtime dependencies only
+RUN apt-get update &&    apt-get install -y    libssl1.1    nginx    && apt-get clean    && rm -rf /var/lib/apt/lists/*
 
-# Start Nginx to handle routing
-echo "Starting Nginx to handle routing..."
-nginx
-NGINX_PID=$!
+# Copy the built binary from the builder stage
+COPY --from=builder /app/telegram-bot-api/bin/telegram-bot-api /usr/local/bin/
 
-echo "Service is now running. Monitoring logs..."
-echo "Nginx routing traffic from port 80 to appropriate services"
+# Create necessary directories
+RUN mkdir -p /app/data /app/data/temp
 
-# Keep the container running and monitor all processes
-while kill -0 $BOT_API_PID 2>/dev/null && kill -0 $HEALTH_PID 2>/dev/null && kill -0 $NGINX_PID 2>/dev/null; do
-    sleep 10
-    echo "Service health check: $(date)"
-done
+# Copy configuration files and scripts
+COPY start.sh /app/start.sh
+COPY nginx.conf /etc/nginx/nginx.conf
+RUN chmod +x /app/start.sh
 
-# If we get here, one of the processes died
-echo "Service stopped. Checking which process died..."
+# Expose ports
+EXPOSE 8080 8081
 
-if ! kill -0 $BOT_API_PID 2>/dev/null; then
-    echo "ERROR: Bot API server process died. Checking logs..."
-    tail -n 50 /app/data/bot-api.log
-fi
-
-if ! kill -0 $HEALTH_PID 2>/dev/null; then
-    echo "ERROR: Health check server process died."
-fi
-
-if ! kill -0 $NGINX_PID 2>/dev/null; then
-    echo "ERROR: Nginx process died."
-    tail -n 50 /app/data/nginx_error.log
-fi
-
-echo "Exiting container..."
-exit 1
+# Run the start script
+CMD ["/app/start.sh"]
