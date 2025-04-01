@@ -5,7 +5,6 @@ services:
     region: oregon
     plan: standard
     healthCheckPath: /
-    healthCheckPort: 80
     disk:
       name: telegram-bot-api-data
       mountPath: /app/data
