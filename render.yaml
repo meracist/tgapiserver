@@ -2,7 +2,6 @@ services:
   - type: web
     name: telegram-bot-api
     env: docker
-    env: docker
     region: virginia
     plan: pro
     healthCheckPath: /
