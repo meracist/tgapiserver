@@ -2,13 +2,13 @@ services:
   - type: web
     name: telegram-bot-api
     env: docker
-    region: oregon
-    plan: standard
+    region: virginia
+    plan: pro
     healthCheckPath: /
     disk:
       name: telegram-bot-api-data
       mountPath: /app/data
-      sizeGB: 1
+      sizeGB: 10
     envVars:
       - key: API_ID
         sync: false
