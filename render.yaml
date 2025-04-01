@@ -2,9 +2,12 @@ services:
   - type: web
     name: telegram-bot-api
     env: docker
+    env: docker
     region: virginia
     plan: pro
     healthCheckPath: /
+    healthCheckPort: 10000  # Specify the health check port explicitly
+    port: 80  # Tell Render to route traffic to port 80 (nginx)
     disk:
       name: telegram-bot-api-data
       mountPath: /app/data
